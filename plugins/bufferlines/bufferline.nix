@@ -15,9 +15,19 @@ with lib; let
 
     sp = helpers.mkNullOrOption types.str "sp color";
 
-    bold = helpers.mkNullOrOption types.bool "enable bold";
+    default = helpers.mkNullOrOption types.str "default color";
+
+    link = helpers.mkNullOrOption types.str "link to another highlight group";
 
     italic = helpers.mkNullOrOption types.bool "enable italic";
+
+    bold = helpers.mkNullOrOption types.bool "enable bold";
+
+    underline = helpers.mkNullOrOption types.bool "enable underline";
+
+    undercurl = helpers.mkNullOrOption types.bool "enable undercurl";
+
+    underdot = helpers.mkNullOrOption types.bool "enable underdot";
   };
 
   highlightOptions = {
@@ -26,17 +36,33 @@ with lib; let
 
     tab = "tab";
     tab_selected = "tabSelected";
+    tab_separator = "tabSeparator";
+    tab_separator_selected = "tabSeparatorSelected";
     tab_close = "tabClose";
+
     close_button = "closeButton";
     close_button_visible = "closeButtonVisible";
     close_button_selected = "closeButtonSelected";
 
+    buffer = "buffer";
     buffer_visible = "bufferVisible";
     buffer_selected = "bufferSelected";
+
+    numbers = "numbers";
+    numbers_visible = "numbersVisible";
+    numbers_selected = "numbersSelected";
 
     diagnostic = "diagnostic";
     diagnostic_visible = "diagnosticVisible";
     diagnostic_selected = "diagnosticSelected";
+
+    hint = "hint";
+    hint_visible = "hintVisible";
+    hint_selected = "hintSelected";
+
+    hint_diagnostic = "hintDiagnostic";
+    hint_diagnostic_visible = "hintDiagnosticVisible";
+    hint_diagnostic_selected = "hintDiagnosticSelected";
 
     info = "info";
     info_visible = "infoVisible";
@@ -74,11 +100,14 @@ with lib; let
     separator_visible = "separatorVisible";
     separator_selected = "separatorSelected";
 
+    indicator_visible = "indicatorVisible";
     indicator_selected = "indicatorSelected";
 
     pick = "pick";
     pick_visible = "pickVisible";
     pick_selected = "pickSelected";
+
+    offset_separator = "offsetSeparator";
   };
 in {
   options = {
@@ -148,7 +177,25 @@ in {
         rightTruncMarker = helpers.defaultNullOpts.mkStr "" "right trunc marker";
 
         separatorStyle =
-          helpers.defaultNullOpts.mkEnum ["slant" "thick" "thin"] "thin"
+          helpers.defaultNullOpts.mkNullable
+          (
+            with types;
+              either
+              (enum ["slant" "padded_slant" "slope" "padded_slope" "thick" "thin"])
+              (submodule {
+                options = {
+                  left = lib.mkOption {
+                    type = types.str;
+                    description = "left separator";
+                  };
+                  right = lib.mkOption {
+                    type = types.str;
+                    description = "right separator";
+                  };
+                };
+              })
+          )
+          "thin"
           "Separator style";
 
         nameFormatter =
@@ -244,6 +291,18 @@ in {
           logging = helpers.defaultNullOpts.mkBool false "Whether to enable logging";
         };
 
+        moveWrapsAtEnds =
+          helpers.defaultNullOpts.mkBool true
+          ''Whether or not the move command "wraps" at the first or last position'';
+
+        stylePreset = let
+          presets = types.enum ["no_italic" "no_bold" "minimal"];
+        in
+          helpers.defaultNullOpts.mkNullable
+          (with types; either (listOf presets) presets)
+          null
+          "Use one of the pre-defined rulesets i.e. preset for the bufferline";
+
         customFilter =
           helpers.defaultNullOpts.mkStr "null"
           ''
@@ -266,6 +325,14 @@ in {
             themable
             numbers
             ;
+          style_preset =
+            if cfg.stylePreset == null
+            then null
+            else
+              (
+                map (preset: helpers.mkRaw ''require('bufferline').style_preset.${preset}'')
+                (lib.toList cfg.stylePreset)
+              );
           buffer_close_icon = cfg.bufferCloseIcon;
           modified_icon = cfg.modifiedIcon;
           close_icon = cfg.closeIcon;
@@ -276,7 +343,12 @@ in {
           inherit (cfg) indicator;
           left_trunc_marker = cfg.leftTruncMarker;
           right_trunc_marker = cfg.rightTruncMarker;
-          separator_style = cfg.separatorStyle;
+          separator_style = let
+            separator = cfg.separatorStyle;
+          in
+            if builtins.isAttrs separator
+            then [separator.left separator.right]
+            else separator;
           name_formatter =
             helpers.ifNonNull' cfg.nameFormatter
             (helpers.mkRaw cfg.nameFormatter);
@@ -296,6 +368,7 @@ in {
           always_show_bufferline = cfg.alwaysShowBufferline;
           persist_buffer_sort = cfg.persistBufferSort;
           max_prefix_length = cfg.maxPrefixLength;
+          move_wraps_at_ends = cfg.moveWrapsAtEnds;
           sort_by = cfg.sortBy;
           inherit (cfg) diagnostics;
           diagnostics_indicator =
@@ -325,8 +398,13 @@ in {
               fg
               bg
               sp
-              bold
+              default
+              link
               italic
+              bold
+              underline
+              undercurl
+              underdot
               ;
           }
         )

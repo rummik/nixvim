@@ -36,6 +36,10 @@ with lib; let
         )
       );
 
+    filename =
+      helpers.defaultNullOpts.mkBool false
+      "Whether to show the file name for the associated buffer.";
+
     filetype = {
       customColors =
         helpers.defaultNullOpts.mkBool false
@@ -128,6 +132,13 @@ in {
 
       icons =
         stateOptions
+        // {
+          preset =
+            helpers.defaultNullOpts.mkEnumFirstDefault ["default" "powerline" "slanted"]
+            ''
+              The default preset to use for the buffer separator icons.
+            '';
+        }
         // (
           mapAttrs
           (name: description:
@@ -249,7 +260,7 @@ in {
             with bufferOption; {
               buffer_index = bufferIndex;
               buffer_number = bufferNumber;
-              inherit button;
+              inherit button filename;
               diagnostics = helpers.ifNonNull' bufferOption.diagnostics (
                 /*
                 Because the keys of this lua table are not strings (but
@@ -280,7 +291,7 @@ in {
                   )
               );
               filetype = with filetype; {
-                custom_color = customColors;
+                custom_colors = customColors;
                 enabled = enable;
               };
               inherit separator;
@@ -308,6 +319,7 @@ in {
               cfg.icons
             )
           )
+          // {preset = cfg.icons.preset;}
           // (
             genAttrs
             ["alternate" "current" "inactive" "visible"]
